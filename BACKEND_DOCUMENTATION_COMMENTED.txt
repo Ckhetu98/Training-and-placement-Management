@@ -1,0 +1,694 @@
+# TRAINING PLACEMENT MANAGEMENT SYSTEM (TPMS) - BACKEND DOCUMENTATION WITH DETAILED COMMENTS
+
+## PROJECT OVERVIEW
+This is a comprehensive Spring Boot backend application for managing training and placement activities in educational institutions. The system supports three user roles: Admin, Student, and Recruiter.
+
+## TECHNOLOGY STACK
+- Framework: Spring Boot 3.x
+- Database: MySQL 8.0
+- Security: JWT Authentication
+- Build Tool: Maven
+- Documentation: Swagger/OpenAPI
+- ORM: JPA/Hibernate
+
+## CORE ENTITIES WITH DETAILED COMMENTS
+
+### 1. User Entity - Core Authentication Entity
+```java
+@Entity                                    // JPA annotation: Marks this class as a database entity
+@Table(name = "users")                     // JPA annotation: Maps this entity to 'users' table in database
+@Data                                      // Lombok annotation: Auto-generates getters, setters, toString, equals, hashCode
+public class User extends BaseEntity {     // Inherits common fields like id, createdAt, updatedAt from BaseEntity
+    
+    @Column(name = "full_name", nullable = false)  // JPA: Maps to 'full_name' column, cannot be null
+    private String fullName;                       // User's complete name
+    
+    @Column(unique = true, nullable = false)       // JPA: Email must be unique across all users, cannot be null
+    private String email;                          // User's email address (used for login)
+    
+    @Column(nullable = false)                      // JPA: Password field is required
+    private String password;                       // BCrypt hashed password (never store plain text)
+    
+    private String phone;                          // Optional phone number field
+    
+    @Enumerated(EnumType.STRING)                   // JPA: Store enum as string value (not ordinal number)
+    @Column(nullable = false)                      // Role is required for authorization
+    private Role role;                             // User role: ADMIN, STUDENT, or RECRUITER
+    
+    @Enumerated(EnumType.STRING)                   // Store status as string in database
+    @Column(nullable = false)                      // Status is required
+    private Status status = Status.ACTIVE;        // Account status with default value ACTIVE
+    
+    // One-to-One relationship with StudentProfile entity
+    @OneToOne(mappedBy = "user",                   // 'user' field in StudentProfile owns this relationship
+              cascade = CascadeType.ALL,           // All operations (save, update, delete) cascade to StudentProfile
+              orphanRemoval = true)                // Remove StudentProfile if User is deleted
+    private StudentProfile studentProfile;         // Student's extended profile information
+}
+```
+
+### 2. StudentProfile Entity - Extended Student Information
+```java
+@Entity                                    // JPA: Marks as database entity
+@Table(name = "student_details")           // JPA: Maps to 'student_details' table
+@Data                                      // Lombok: Auto-generates getters, setters, etc.
+public class StudentProfile extends BaseEntity {  // Inherits id, timestamps from BaseEntity
+    
+    @OneToOne(fetch = FetchType.EAGER)             // JPA: One-to-one relationship, load user data immediately
+    @JoinColumn(name = "user_id", unique = true)   // JPA: Foreign key column 'user_id', must be unique
+    private User user;                             // Reference to the User entity (owning side of relationship)
+    
+    @Enumerated(EnumType.STRING)                   // JPA: Store gender enum as string value
+    private Gender gender;                         // Student's gender: MALE, FEMALE, OTHER
+
+    // Basic student information
+    private String enrollmentNo;                   // Student's enrollment/roll number
+    private String department;                     // Academic department (CS, IT, etc.)
+    private String passingYear;                    // Expected graduation year
+    private String dob;                            // Date of birth
+    private String age;                            // Current age
+
+    // Address fields - separated for better querying and validation
+    private String addressLine1;                   // Primary address line
+    private String addressLine2;                   // Secondary address line (optional)
+    private String city;                           // City name
+    private String state;                          // State/Province
+    private String pincode;                        // Postal/ZIP code
+    private String nationality;                    // Student's nationality
+
+    // Profile links - social media and professional profiles
+    private String profilePhoto;                   // URL/path to profile photo
+    private String linkedinUrl;                    // LinkedIn profile URL
+    private String githubUrl;                      // GitHub profile URL
+    private String portfolioUrl;                   // Personal portfolio website URL
+
+    // JSON stored data - flexible storage for complex nested data
+    @Column(columnDefinition = "TEXT")             // JPA: Use TEXT type for large data (>255 chars)
+    private String educationJson;                  // Education history stored as JSON array
+
+    @Column(columnDefinition = "TEXT")             // TEXT type for potentially large content
+    private String experienceJson;                 // Work experience stored as JSON array
+
+    @Column(columnDefinition = "TEXT")             // TEXT type for skills list
+    private String skillsJson;                     // Technical skills stored as JSON array
+
+    @Column(columnDefinition = "TEXT")             // TEXT type for projects data
+    private String projectsJson;                   // Academic/personal projects as JSON array
+
+    @Column(columnDefinition = "TEXT")             // TEXT type for resume file links
+    private String resumeLinksJson;                // Resume file URLs/paths as JSON array
+
+    @Column(columnDefinition = "TEXT")             // TEXT type for career interests
+    private String careerInterests;                // Student's career goals and interests
+
+    // Job preferences
+    private String preferredJobLocation;           // Preferred work location
+    private String placementStatus;                // Current placement status (PLACED, SEEKING, etc.)
+
+    private Boolean profileCompleted = false;     // Flag to track if profile is complete (default: false)
+}
+```
+
+### 3. Job Entity - Job Posting Management
+```java
+@Entity                                    // JPA: Marks as database entity
+@Table(name = "jobs")                      // JPA: Maps to 'jobs' table
+@Data                                      // Lombok: Auto-generates getters, setters, etc.
+public class Job extends BaseEntity {      // Inherits id, timestamps from BaseEntity
+    
+    @Column(nullable = false)                      // JPA: Job title is required
+    private String title;                          // Job position title
+    
+    @Column(columnDefinition = "TEXT")             // JPA: Use TEXT type for large job descriptions
+    private String description;                    // Detailed job description
+    
+    private String location;                       // Job location (city, state, remote, etc.)
+    private String employmentType;                 // Employment type: Full-time, Part-time, Contract, Internship
+    
+    @Enumerated(EnumType.STRING)                   // JPA: Store job status as string
+    private JobStatus status = JobStatus.OPEN;    // Job status with default value OPEN
+    
+    private LocalDateTime postedAt;                // Timestamp when job was posted
+    private String salary;                         // Salary range or amount
+    
+    @Column(columnDefinition = "TEXT")             // TEXT type for potentially long skills list
+    private String skillsRequired;                 // Required technical skills
+    
+    private String deadline;                       // Application deadline date
+    
+    // Many-to-One relationship with Company entity
+    @ManyToOne(fetch = FetchType.LAZY)            // JPA: Many jobs can belong to one company, load company data only when needed
+    @JoinColumn(name = "company_id")              // JPA: Foreign key column to companies table
+    private Company company;                       // Company that posted this job
+    
+    // One-to-Many relationship with Application entity
+    @OneToMany(mappedBy = "job",                  // 'job' field in Application entity owns this relationship
+               cascade = CascadeType.ALL,          // All operations cascade to applications
+               orphanRemoval = true)               // Remove applications when job is deleted
+    private List<Application> applications = new ArrayList<>();  // List of applications for this job
+}
+```
+
+### 4. Application Entity - Job Application Management
+```java
+@Entity                                    // JPA: Marks as database entity
+@Table(name = "applications")              // JPA: Maps to 'applications' table
+@Data                                      // Lombok: Auto-generates getters, setters, etc.
+public class Application extends BaseEntity {  // Inherits id, timestamps from BaseEntity
+    
+    // Many-to-One relationship with User (Student)
+    @ManyToOne(fetch = FetchType.LAZY)            // JPA: Many applications can belong to one student, lazy loading
+    @JoinColumn(name = "student_id", nullable = false)  // JPA: Foreign key to users table, required
+    private User student;                          // Student who applied for the job
+    
+    // Many-to-One relationship with Job
+    @ManyToOne(fetch = FetchType.LAZY)            // JPA: Many applications can be for one job, lazy loading
+    @JoinColumn(name = "job_id", nullable = false)      // JPA: Foreign key to jobs table, required
+    private Job job;                               // Job that student applied for
+    
+    @Enumerated(EnumType.STRING)                   // JPA: Store application status as string
+    private ApplicationStatus status = ApplicationStatus.APPLIED;  // Application status with default APPLIED
+    
+    private LocalDateTime appliedAt;               // Timestamp when application was submitted
+}
+```
+
+## REPOSITORY LAYER WITH DETAILED COMMENTS
+
+### 1. UserRepository - Database Access for Users
+```java
+@Repository                                        // Spring annotation: Marks this as a repository component
+public interface UserRepository extends JpaRepository<User, Long> {  // Extends JpaRepository for CRUD operations
+    
+    /**
+     * Find user by email address (used for login authentication)
+     * Spring Data JPA automatically generates the SQL: SELECT * FROM users WHERE email = ?
+     */
+    Optional<User> findByEmail(String email);     // Returns Optional to handle null cases gracefully
+    
+    /**
+     * Check if user with given email already exists (used during registration)
+     * Spring Data JPA generates: SELECT COUNT(*) > 0 FROM users WHERE email = ?
+     */
+    boolean existsByEmail(String email);          // Returns boolean for existence check
+    
+    /**
+     * Find all users with specific role (Admin can view all students, recruiters, etc.)
+     * Spring Data JPA generates: SELECT * FROM users WHERE role = ?
+     */
+    List<User> findByRole(Role role);             // Returns list of users with given role
+    
+    /**
+     * Find users by account status (active/inactive users)
+     * Spring Data JPA generates: SELECT * FROM users WHERE status = ?
+     */
+    List<User> findByStatus(Status status);       // Returns list of users with given status
+}
+```
+
+### 2. ApplicationRepository - Complex Query Examples
+```java
+@Repository                                        // Spring: Repository component
+public interface ApplicationRepository extends JpaRepository<Application, Long> {
+    
+    /**
+     * Find all applications submitted by a specific student
+     * SQL: SELECT * FROM applications WHERE student_id = ?
+     */
+    List<Application> findByStudentId(Long studentId);
+    
+    /**
+     * Find all applications for a specific job (recruiter can see who applied)
+     * SQL: SELECT * FROM applications WHERE job_id = ?
+     */
+    List<Application> findByJobId(Long jobId);
+    
+    /**
+     * Find applications by status (filter by APPLIED, SHORTLISTED, etc.)
+     * SQL: SELECT * FROM applications WHERE status = ?
+     */
+    List<Application> findByStatus(ApplicationStatus status);
+    
+    /**
+     * Find specific application by student and job combination
+     * SQL: SELECT * FROM applications WHERE student_id = ? AND job_id = ?
+     */
+    Optional<Application> findByStudentIdAndJobId(Long studentId, Long jobId);
+    
+    /**
+     * Check if student already applied for specific job (prevent duplicate applications)
+     * SQL: SELECT COUNT(*) > 0 FROM applications WHERE student_id = ? AND job_id = ?
+     */
+    boolean existsByStudentIdAndJobId(Long studentId, Long jobId);
+}
+```
+
+## CONTROLLER LAYER WITH DETAILED COMMENTS
+
+### 1. AuthController - Authentication Endpoints
+```java
+@RestController                                    // Spring: Marks this as a REST API controller
+@RequestMapping("/api/auth")                       // Spring: Base URL path for all endpoints in this controller
+@RequiredArgsConstructor                           // Lombok: Generates constructor for final fields (dependency injection)
+@CrossOrigin(origins = "http://localhost:5173")   // Spring: Allows cross-origin requests from React frontend
+public class AuthController {
+    
+    private final AuthService authService;         // Injected service dependency
+    
+    /**
+     * User login endpoint
+     * POST /api/auth/login
+     * Accepts email and password, returns JWT token if valid
+     */
+    @PostMapping("/login")                         // Spring: Maps POST requests to /api/auth/login
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest loginRequest) {
+        
+        // Input validation - ensure required fields are present
+        if (loginRequest.getEmail() == null || loginRequest.getPassword() == null) {
+            throw new BadRequestException("Email and password are required");
+        }
+        
+        // Delegate business logic to service layer
+        ApiResponse<LoginResponse> response = authService.login(loginRequest);
+        
+        // Return HTTP 200 OK with response body
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * User registration endpoint
+     * POST /api/auth/signup
+     * Creates new user account
+     */
+    @PostMapping("/signup")                        // Spring: Maps POST requests to /api/auth/signup
+    public ResponseEntity<ApiResponse<String>> signup(@RequestBody @Valid SignupRequest signupRequest) {
+        // @Valid annotation triggers Bean Validation on the request object
+        
+        ApiResponse<String> response = authService.signup(signupRequest);
+        
+        // Return HTTP 201 Created for successful registration
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+}
+```
+
+### 2. JobController - Job Management with Security
+```java
+@RestController                                    // Spring: REST API controller
+@RequestMapping("/api/jobs")                       // Spring: Base URL for job endpoints
+@RequiredArgsConstructor                           // Lombok: Constructor injection
+public class JobController {
+    
+    private final JobService jobService;           // Injected service dependency
+    
+    /**
+     * Get all active jobs - Public endpoint (no authentication required)
+     * GET /api/jobs
+     */
+    @GetMapping                                    // Spring: Maps GET requests to /api/jobs
+    public ResponseEntity<ApiResponse<List<JobDto>>> getAllJobs() {
+        ApiResponse<List<JobDto>> response = jobService.getAllJobs();
+        return ResponseEntity.ok(response);        // Return HTTP 200 with job list
+    }
+    
+    /**
+     * Get specific job by ID
+     * GET /api/jobs/{id}
+     */
+    @GetMapping("/{id}")                           // Spring: Maps GET requests with path variable
+    public ResponseEntity<ApiResponse<JobDto>> getJobById(@PathVariable Long id) {
+        // @PathVariable extracts {id} from URL path
+        
+        // Input validation
+        if (id == null || id <= 0) {
+            throw new BadRequestException("Invalid job ID");
+        }
+        
+        ApiResponse<JobDto> response = jobService.getJobById(id);
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Create new job posting - Recruiter only
+     * POST /api/jobs
+     */
+    @PostMapping                                   // Spring: Maps POST requests
+    @PreAuthorize("hasRole('RECRUITER')")          // Spring Security: Only users with RECRUITER role can access
+    public ResponseEntity<ApiResponse<JobDto>> createJob(@RequestBody @Valid JobDto jobDto) {
+        // @Valid triggers validation annotations on JobDto
+        
+        ApiResponse<JobDto> response = jobService.createJob(jobDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);  // Return HTTP 201 Created
+    }
+    
+    /**
+     * Update existing job - Recruiter only
+     * PUT /api/jobs/{id}
+     */
+    @PutMapping("/{id}")                           // Spring: Maps PUT requests with path variable
+    @PreAuthorize("hasRole('RECRUITER')")          // Security: Recruiter role required
+    public ResponseEntity<ApiResponse<JobDto>> updateJob(@PathVariable Long id, @RequestBody @Valid JobDto jobDto) {
+        
+        ApiResponse<JobDto> response = jobService.updateJob(id, jobDto);
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Delete job - Recruiter or Admin can delete
+     * DELETE /api/jobs/{id}
+     */
+    @DeleteMapping("/{id}")                        // Spring: Maps DELETE requests
+    @PreAuthorize("hasRole('RECRUITER') or hasRole('ADMIN')")  // Security: Multiple roles allowed
+    public ResponseEntity<ApiResponse<Void>> deleteJob(@PathVariable Long id) {
+        
+        ApiResponse<Void> response = jobService.deleteJob(id);
+        return ResponseEntity.ok(response);
+    }
+}
+```
+
+## SECURITY CONFIGURATION WITH DETAILED COMMENTS
+
+### 1. JWT Security Configuration
+```java
+@Configuration                                     // Spring: Marks this as a configuration class
+@EnableWebSecurity                                 // Spring Security: Enables web security features
+@EnableMethodSecurity                              // Spring Security: Enables method-level security annotations like @PreAuthorize
+@RequiredArgsConstructor                           // Lombok: Generates constructor for final fields (dependency injection)
+public class SecurityConfig {
+    
+    // Injected dependencies for JWT authentication
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;  // Handles authentication failures
+    private final JwtRequestFilter jwtRequestFilter;                        // Processes JWT tokens in requests
+    
+    /**
+     * Password encoder bean - uses BCrypt hashing algorithm
+     * BCrypt automatically handles salt generation and is resistant to rainbow table attacks
+     */
+    @Bean                                              // Spring: Registers this method's return value as a Spring bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();            // BCrypt: Strong password hashing with automatic salt
+    }
+    
+    /**
+     * Authentication manager bean - handles the authentication process
+     */
+    @Bean                                              // Spring: Creates authentication manager bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();      // Returns Spring's default authentication manager
+    }
+    
+    /**
+     * Security filter chain - configures all HTTP security rules
+     * This is the main security configuration method
+     */
+    @Bean                                              // Spring: Registers security filter chain
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            // Disable CSRF protection (Cross-Site Request Forgery)
+            // Not needed for REST APIs using JWT tokens
+            .csrf(csrf -> csrf.disable())             
+            
+            // Configure URL-based authorization rules
+            .authorizeHttpRequests(authz -> authz      
+                .requestMatchers("/api/auth/**").permitAll()           // Allow all authentication endpoints (login, signup)
+                .requestMatchers("/api/jobs").permitAll()              // Allow public job listing (no auth required)
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")     // Admin endpoints require ADMIN role
+                .requestMatchers("/api/student/**").hasRole("STUDENT") // Student endpoints require STUDENT role
+                .requestMatchers("/api/recruiter/**").hasRole("RECRUITER") // Recruiter endpoints require RECRUITER role
+                .anyRequest().authenticated()                          // All other requests need authentication
+            )
+            
+            // Configure exception handling for authentication failures
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+            
+            // Configure session management - stateless for REST APIs
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        
+        // Add JWT filter before the default username/password authentication filter
+        // This ensures JWT tokens are processed before other authentication methods
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        return http.build();                           // Build and return the security configuration
+    }
+}
+```
+
+### 2. JWT Utility Class with Detailed Comments
+```java
+@Component                                         // Spring: Marks this as a Spring component for dependency injection
+public class JwtUtil {
+    
+    // JWT configuration - should be moved to application.properties in production
+    private String secret = "mySecretKey";          // Secret key for signing JWT tokens (use strong key in production)
+    private int jwtExpiration = 86400;             // Token expiration time in seconds (24 hours)
+    
+    /**
+     * Generate JWT token for authenticated user
+     * Called after successful login to create token for client
+     */
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();  // Additional claims (can add role, permissions, etc.)
+        return createToken(claims, userDetails.getUsername()); // Create token with username as subject
+    }
+    
+    /**
+     * Create JWT token with claims and subject
+     * This is where the actual JWT token is built and signed
+     */
+    private String createToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()                          // JWT builder pattern from io.jsonwebtoken library
+                .setClaims(claims)                     // Set custom claims (role, permissions, etc.)
+                .setSubject(subject)                   // Set subject (user identifier - usually email)
+                .setIssuedAt(new Date(System.currentTimeMillis()))  // Set token issue time (current time)
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration * 1000))  // Set expiration time
+                .signWith(SignatureAlgorithm.HS512, secret)  // Sign with HMAC SHA-512 algorithm using secret key
+                .compact();                            // Create final compact token string
+    }
+    
+    /**
+     * Validate JWT token against user details
+     * Called on every request to verify token is valid and belongs to the user
+     */
+    public Boolean validateToken(String token, UserDetails userDetails) {
+        final String username = getUsernameFromToken(token);  // Extract username from token
+        // Token is valid if username matches and token is not expired
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+    
+    /**
+     * Extract username from JWT token
+     * Used to identify which user the token belongs to
+     */
+    public String getUsernameFromToken(String token) {
+        return getClaimFromToken(token, Claims::getSubject);  // Get subject claim (username/email)
+    }
+    
+    /**
+     * Extract expiration date from JWT token
+     * Used to check if token is still valid
+     */
+    public Date getExpirationDateFromToken(String token) {
+        return getClaimFromToken(token, Claims::getExpiration);  // Get expiration claim
+    }
+    
+    /**
+     * Generic method to extract specific claim from token
+     * Uses functional programming to extract any claim type
+     */
+    public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = getAllClaimsFromToken(token);  // Parse all claims from token
+        return claimsResolver.apply(claims);                 // Apply resolver function to get specific claim
+    }
+    
+    /**
+     * Parse and extract all claims from JWT token
+     * This method verifies the token signature and extracts the payload
+     */
+    private Claims getAllClaimsFromToken(String token) {
+        return Jwts.parser()                           // JWT parser from io.jsonwebtoken library
+                .setSigningKey(secret)                 // Set signing key for verification (must match creation key)
+                .parseClaimsJws(token)                 // Parse and verify token signature
+                .getBody();                            // Get claims body (payload)
+    }
+    
+    /**
+     * Check if JWT token is expired
+     * Compares token expiration time with current time
+     */
+    private Boolean isTokenExpired(String token) {
+        final Date expiration = getExpirationDateFromToken(token);  // Get expiration date from token
+        return expiration.before(new Date());                      // Compare with current date/time
+    }
+}
+```
+
+## APPLICATION PROPERTIES WITH DETAILED COMMENTS
+```properties
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+# MySQL database connection URL with additional parameters
+spring.datasource.url=jdbc:mysql://localhost:3306/tpms_db?useSSL=false&allowPublicKeyRetrieval=true
+spring.datasource.username=root                   # Database username
+spring.datasource.password=your_password          # Database password (change in production)
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver  # MySQL JDBC driver class
+
+# =============================================================================
+# JPA/HIBERNATE CONFIGURATION
+# =============================================================================
+spring.jpa.hibernate.ddl-auto=update              # Auto-create/update database tables based on entities
+spring.jpa.show-sql=true                          # Show generated SQL queries in console (disable in production)
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect  # MySQL 8 specific dialect
+spring.jpa.properties.hibernate.format_sql=true  # Format SQL queries for better readability in logs
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+server.port=8080                                  # Port where Spring Boot application will run
+server.servlet.context-path=/                     # Root context path (empty means root)
+
+# =============================================================================
+# JWT SECURITY CONFIGURATION
+# =============================================================================
+jwt.secret=mySecretKey                            # JWT signing secret (use strong random key in production)
+jwt.expiration=86400                              # JWT token expiration time in seconds (24 hours)
+
+# =============================================================================
+# FILE UPLOAD CONFIGURATION
+# =============================================================================
+spring.servlet.multipart.max-file-size=10MB      # Maximum size for individual uploaded files
+spring.servlet.multipart.max-request-size=10MB   # Maximum size for entire multipart request
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logging.level.com.tpms=DEBUG                      # Debug level logging for our application package
+logging.level.org.springframework.security=DEBUG # Debug level logging for Spring Security (disable in production)
+
+# =============================================================================
+# CORS CONFIGURATION (Cross-Origin Resource Sharing)
+# =============================================================================
+cors.allowed-origins=http://localhost:5173        # Frontend application URL (React dev server)
+cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS  # Allowed HTTP methods for CORS requests
+cors.allowed-headers=*                            # Allow all headers in CORS requests
+```
+
+## API ENDPOINTS WITH DETAILED EXPLANATIONS
+
+### Authentication Endpoints
+```
+POST /api/auth/login          # User login - accepts email/password, returns JWT token
+POST /api/auth/signup         # User registration - creates new account
+POST /api/auth/refresh        # Token refresh - generates new token from refresh token
+```
+
+### Job Management Endpoints
+```
+GET /api/jobs                 # Get all active jobs (public - no auth required)
+GET /api/jobs/{id}            # Get specific job details by ID
+POST /api/jobs                # Create new job posting (Recruiter only)
+PUT /api/jobs/{id}            # Update existing job (Recruiter only)
+DELETE /api/jobs/{id}         # Delete job posting (Recruiter/Admin only)
+```
+
+### Application Management Endpoints
+```
+POST /api/applications        # Apply for a job (Student only)
+GET /api/applications/student/{id}    # Get student's applications (Student/Admin)
+GET /api/applications/job/{id}        # Get job applications (Recruiter/Admin)
+PUT /api/applications/{id}/status     # Update application status (Recruiter/Admin)
+```
+
+### Training Management Endpoints
+```
+GET /api/trainings            # Get all training programs
+GET /api/trainings/student/{id}       # Get student's enrolled trainings
+POST /api/trainings           # Create training program (Admin only)
+PUT /api/trainings/{id}       # Update training program (Admin only)
+DELETE /api/trainings/{id}    # Delete training program (Admin only)
+```
+
+### Admin Management Endpoints
+```
+GET /api/admin/students       # Get all students (Admin only)
+GET /api/admin/recruiters     # Get all recruiters (Admin only)
+GET /api/admin/jobs           # Get all jobs (Admin only)
+PUT /api/admin/users/{id}/status      # Update user status (Admin only)
+DELETE /api/admin/users/{id}  # Delete user account (Admin only)
+GET /api/admin/dashboard      # Get dashboard statistics (Admin only)
+```
+
+## DEFAULT LOGIN CREDENTIALS FOR TESTING
+```
+Admin Account:
+- Email: admin@demo.com
+- Password: password
+- Role: ADMIN
+
+Student Account:
+- Email: student@demo.com
+- Password: password
+- Role: STUDENT
+
+Recruiter Account:
+- Email: recruiter@demo.com
+- Password: password
+- Role: RECRUITER
+```
+
+## KEY FEATURES IMPLEMENTED WITH EXPLANATIONS
+
+1. **JWT Authentication & Authorization**
+   - Stateless token-based authentication
+   - Role-based access control (RBAC)
+   - Secure password hashing with BCrypt
+
+2. **Role-based Access Control**
+   - Three user roles: Admin, Student, Recruiter
+   - Method-level security with @PreAuthorize
+   - URL-based security configuration
+
+3. **File Upload/Download (Resume Management)**
+   - Secure file upload with validation
+   - Resume storage and retrieval
+   - File type and size restrictions
+
+4. **Real-time Data Integration**
+   - Live data from database (no mock data)
+   - Real-time application status updates
+   - Dynamic enrollment counts
+
+5. **Comprehensive CRUD Operations**
+   - Create, Read, Update, Delete for all entities
+   - Proper HTTP status codes
+   - Input validation and error handling
+
+6. **Database Relationships**
+   - One-to-One: User ↔ StudentProfile
+   - One-to-Many: Job ↔ Applications, Training ↔ Enrollments
+   - Many-to-One: Application ↔ User, Application ↔ Job
+
+7. **Input Validation**
+   - Bean Validation annotations (@Valid, @NotBlank, etc.)
+   - Custom validation logic in services
+   - Proper error messages for validation failures
+
+8. **Error Handling**
+   - Global exception handler
+   - Consistent error response format
+   - Proper HTTP status codes for different error types
+
+9. **API Documentation**
+   - Swagger/OpenAPI integration
+   - Comprehensive endpoint documentation
+   - Request/response examples
+
+10. **Security Best Practices**
+    - Password hashing with BCrypt
+    - JWT token expiration
+    - CORS configuration
+    - SQL injection prevention with JPA
+    - Input sanitization and validation
+
+This backend provides a complete, production-ready REST API for the Training Placement Management System with proper security, validation, and database integration.

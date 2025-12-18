@@ -1,0 +1,213 @@
+# Training Placement Management System (TPMS) - Technology Documentation
+
+## Technology Stack Overview
+
+### Backend Technologies
+- **Framework**: Spring Boot 3.x
+- **Language**: Java 17
+- **Database**: MySQL 8.0
+- **Security**: JWT Authentication with Spring Security
+- **Email**: Spring Boot Mail with Gmail SMTP
+- **Documentation**: Swagger/OpenAPI 3
+- **Build Tool**: Maven
+- **File Storage**: Local file system with multipart upload
+- **Validation**: Bean Validation (JSR-303)
+- **ORM**: Spring Data JPA with Hibernate
+
+### Frontend Technologies
+- **Framework**: React 18 with Vite
+- **Language**: JavaScript (ES6+)
+- **Styling**: Tailwind CSS
+- **UI Components**: Material-UI (MUI)
+- **Icons**: React Icons (Feather Icons)
+- **HTTP Client**: Axios
+- **Routing**: React Router DOM v6
+- **State Management**: React Context API
+- **Build Tool**: Vite
+
+## Backend Architecture & Components
+
+### 1. Security Layer
+- JWT token-based authentication
+- Role-based access control (RBAC)
+- CORS configuration for cross-origin requests
+- Password encryption using BCrypt
+
+### 2. Data Layer
+- MySQL database with proper foreign key relationships
+- JPA entities with validation annotations
+- Repository pattern with Spring Data JPA
+- Custom queries for complex operations
+
+### 3. Service Layer
+- Business logic implementation
+- Email notification services
+- File upload/download services
+- Data transformation and validation
+
+### 4. Controller Layer
+- RESTful API endpoints
+- Request/Response DTOs
+- Exception handling
+- API documentation with Swagger
+
+## Frontend Architecture & Components
+
+### 1. Component Structure
+- Functional components with React Hooks
+- Custom hooks for API calls
+- Reusable UI components
+- Context providers for global state
+
+### 2. Routing & Navigation
+- Protected routes based on user roles
+- Dynamic navigation based on authentication
+- Route guards for unauthorized access
+
+### 3. State Management
+- React Context for authentication
+- Local state with useState/useEffect
+- Form state management
+
+### 4. Styling & UI
+- Tailwind CSS for utility-first styling
+- Material-UI for complex components
+- Responsive design patterns
+- Custom gradient themes
+
+## Common Interview Questions & Answers
+
+### Backend Questions
+
+**Q1: How is JWT authentication implemented?**
+A: JWT tokens are generated on login, stored in localStorage, and sent in Authorization headers. Spring Security validates tokens on each request using a custom filter.
+
+**Q2: How do you handle file uploads?**
+A: Using MultipartFile with Spring Boot, files are stored locally in uploads/ directory with proper validation for file types and sizes.
+
+**Q3: How is email functionality implemented?**
+A: Spring Boot Mail with Gmail SMTP configuration. Email templates are created dynamically and sent asynchronously for better performance.
+
+**Q4: How do you handle database relationships?**
+A: Using JPA annotations like @OneToMany, @ManyToOne with proper cascade operations and foreign key constraints.
+
+**Q5: How is API documentation generated?**
+A: Using Swagger/OpenAPI 3 with annotations to automatically generate interactive API documentation.
+
+### Frontend Questions
+
+**Q1: How is state managed across components?**
+A: Using React Context API for global state (authentication) and local state with useState for component-specific data.
+
+**Q2: How are API calls handled?**
+A: Using Axios with interceptors for token attachment and error handling. API calls are organized in service files.
+
+**Q3: How is routing implemented?**
+A: React Router DOM v6 with protected routes that check authentication status before allowing access.
+
+**Q4: How is responsive design achieved?**
+A: Tailwind CSS utility classes with responsive prefixes (sm:, md:, lg:) and Material-UI's Grid system.
+
+**Q5: How are forms validated?**
+A: Client-side validation using controlled components with useState, plus server-side validation for security.
+
+### Full-Stack Questions
+
+**Q1: How does frontend communicate with backend?**
+A: RESTful APIs with JSON data exchange. Frontend sends HTTP requests with JWT tokens, backend responds with JSON data.
+
+**Q2: How is security implemented end-to-end?**
+A: JWT tokens for authentication, role-based access control, input validation on both ends, and CORS configuration.
+
+**Q3: How is error handling implemented?**
+A: Global error handling with try-catch blocks, custom error responses from backend, and user-friendly error messages on frontend.
+
+**Q4: How is the application deployed?**
+A: Backend as Spring Boot JAR, frontend as static files served by web server, with MySQL database and file storage.
+
+**Q5: How is performance optimized?**
+A: Database indexing, lazy loading, pagination, image optimization, code splitting, and caching strategies.
+
+## Key Features Implemented
+
+### Authentication & Authorization
+- JWT-based login/logout
+- Role-based access (Admin, Student, Recruiter)
+- Protected routes and API endpoints
+
+### Student Management
+- Profile creation and updates
+- Resume upload/download
+- Job application tracking
+- Training enrollment
+
+### Recruiter Management
+- Company profile management
+- Job posting and management
+- Candidate review and selection
+- Email notifications to selected candidates
+
+### Admin Management
+- User management (Students, Recruiters)
+- Job and training oversight
+- System analytics and reporting
+- Contact inquiry management
+
+### File Management
+- Resume upload with validation
+- File serving with proper MIME types
+- Secure file access control
+
+### Email System
+- SMTP configuration with Gmail
+- Template-based email sending
+- Notification system for job selections
+
+## Database Design
+
+### Core Tables
+- users: Authentication and basic user info
+- student_details: Extended student information
+- companies: Recruiter company information
+- jobs: Job postings with requirements
+- applications: Student job applications
+- trainings: Training program information
+- training_enrollments: Student training enrollments
+- contacts: Contact form submissions
+
+### Relationships
+- One-to-One: users ↔ student_details
+- One-to-Many: companies → jobs
+- Many-to-Many: students ↔ jobs (through applications)
+- Many-to-Many: students ↔ trainings (through enrollments)
+
+## Security Considerations
+
+### Backend Security
+- Password hashing with BCrypt
+- JWT token expiration
+- Input validation and sanitization
+- SQL injection prevention with JPA
+- File upload restrictions
+
+### Frontend Security
+- XSS prevention with proper escaping
+- CSRF protection with tokens
+- Secure token storage considerations
+- Input validation before API calls
+
+## Performance Optimizations
+
+### Backend
+- Database connection pooling
+- Lazy loading for JPA relationships
+- Pagination for large datasets
+- Caching for frequently accessed data
+
+### Frontend
+- Component memoization
+- Lazy loading of routes
+- Image optimization
+- Bundle size optimization with Vite
+
+This documentation provides a comprehensive overview of the technologies used and common interview questions for the Training Placement Management System.
